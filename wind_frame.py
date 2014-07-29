@@ -125,6 +125,7 @@ def Refresh(event):
     sampleList=os.getcwd()+'\datelog'
 
     dateList=os.listdir(sampleList)
+    dateList.append('')
     dateList.reverse()
 
     date.SetItems(dateList)
@@ -184,6 +185,7 @@ tasklabel=wx.StaticText(panel,label="任务列表")
 sampleList=os.getcwd()+'\datelog'
 
 dateList=os.listdir(sampleList)
+dateList.append('')
 
 date=wx.ComboBox(panel, -1, dateList[0], (15, 30), (120,30),choices=dateList)
 openlog=wx.Button(panel,label="打开日志")
