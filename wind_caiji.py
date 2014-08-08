@@ -52,7 +52,7 @@ class caiji(threading.Thread):
                 cur.execute("SELECT COUNT(fdate) FROM [datacenter_new].[dbo].["+self.tasklist[0][3]+"] WHERE ftype='"+str(j+1)+"'")
 
                 if(cur.fetchall()[0][0]==0):
-                    startdate="1900-01-01"
+                    startdate="1950-01-01"
                 else:
                     cur.execute("SELECT MAX(fdate) FROM [datacenter_new].[dbo].["+self.tasklist[0][3]+"] WHERE ftype='"+str(j+1)+"'")
                     startdate=cur.fetchall()[0][0]
@@ -60,7 +60,7 @@ class caiji(threading.Thread):
 
 
                 i=0
-                data=w.wsd(str(self.zblist[j][1]),str(self.zbfieldlist[j][0]), startdate,enddate, "Fill=Previous")
+                data=w.wsd(str(self.zblist[j][1]),str(self.zbfieldlist[j][0]), startdate,enddate)
                 print(data)
                 if data.ErrorCode==0:
 
