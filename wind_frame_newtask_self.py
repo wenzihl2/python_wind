@@ -41,6 +41,9 @@ class task:
         self.freunit_t=wx.ComboBox(self.panel, -1, "日", (15, 30), wx.DefaultSize,choices=sampleList)
         self.taskstatus=wx.StaticText(self.panel,label="任务状态")
         self.taskstatus_t=wx.ComboBox(self.panel, -1, '开启采集', (15, 30), wx.DefaultSize,choices=self.taskstatuslist)
+        self.isunittoint={'否':'0','是':'1'}
+        self.isunit=wx.StaticText(self.panel,label="是否按采集周期提取")
+        self.isunit_t=wx.ComboBox(self.panel, -1, '否', (15, 30), wx.DefaultSize,choices=['是','否'])
         self.zbname=wx.StaticText(self.panel,label="指标名称")
         self.zbname_t=wx.TextCtrl(self.panel,style=wx.TE_MULTILINE|wx.HSCROLL)
         self.zbid=wx.StaticText(self.panel,label="指标ID")
@@ -67,6 +70,8 @@ class task:
         vbox1.Add(self.freunit_t,proportion=0 ,flag=wx.EXPAND|wx.ALL,border=0)
         vbox1.Add(self.taskstatus,proportion=0,flag=wx.EXPAND|wx.ALL,border=5 )
         vbox1.Add(self.taskstatus_t,proportion=0 ,flag=wx.EXPAND|wx.ALL,border=0)
+        vbox1.Add(self.isunit,proportion=0,flag=wx.EXPAND|wx.ALL,border=5 )
+        vbox1.Add(self.isunit_t,proportion=0 ,flag=wx.EXPAND|wx.ALL,border=0)
         vbox1.Add(self.okbtn,proportion=0 ,flag=wx.EXPAND|wx.TOP,border=5)
         vbox1.Add(self.cancelbtn,proportion=0 ,flag=wx.EXPAND|wx.TOP,border=5)
         vbox2.Add(self.zbid,proportion=0,flag=wx.EXPAND|wx.ALL,border=5)
@@ -97,7 +102,7 @@ class task:
 
         self.window.Show()
 
-        return None
+        return
     def Cancel(self,event):
         self.window.Close(True)
 
@@ -134,7 +139,7 @@ class task:
 
                     #在task_mgr中插入元组
                     try:
-                        self.mssql.ExecNonQuery("insert into [YaParams].[dbo].[task_mgr](source_id,task_type,task_name,table_name,start_time,freq_interval,freq_unit,task_status,source) values('"+str(self.basic_type)+"','4','"+str(self.taskname_t.GetValue())+"','"+str(self.tablename_t.GetValue())+"','"+datetime.today().strftime('%Y-%m-%d %H:%M:%S')+"','"+str(self.freqinterval_t.GetValue())+"','"+self.sampleListtoint[str(self.freunit_t.GetValue())]+"','"+self.taskstatuslisttoint[str(self.taskstatus_t.GetValue())]+"','万得')")
+                        self.mssql.ExecNonQuery("insert into [YaParams].[dbo].[task_mgr](source_id,task_type,task_name,table_name,start_time,freq_interval,freq_unit,task_status,source,contract_type) values('"+str(self.basic_type)+"','4','"+str(self.taskname_t.GetValue())+"','"+str(self.tablename_t.GetValue())+"','"+datetime.today().strftime('%Y-%m-%d %H:%M:%S')+"','"+str(self.freqinterval_t.GetValue())+"','"+self.sampleListtoint[str(self.freunit_t.GetValue())]+"','"+self.taskstatuslisttoint[str(self.taskstatus_t.GetValue())]+"','万得','"+self.isunittoint[str(self.isunit_t.GetValue())]+"')")
                         print("在表task_mgr中插入元组   '"+str(self.basic_type)+"','4','"+str(self.taskname_t.GetValue())+"','"+str(self.tablename_t.GetValue())+"','"+datetime.today().strftime('%Y-%m-%d %H:%M:%S')+"','"+str(self.freqinterval_t.GetValue())+"','"+self.sampleListtoint[str(self.freunit_t.GetValue())]+"','"+self.taskstatuslisttoint[str(self.taskstatus_t.GetValue())]+"'")
                     except:
                         print("在task_mgr中插入元组出错")
@@ -193,7 +198,7 @@ class looktask:
         self.basic_type=basic_type
         self.refresh=refresh
         self.mssql=wind_mssql.MSSQL(host="172.19.9.54",user="sa",pwd="Yafco2012",db="YaParams",charset="utf8")
-        self.tasklist = self.mssql.ExecQuery("SELECT task_id,source_id,task_name,table_name,start_time,freq_interval,freq_unit,task_status FROM task_mgr WHERE task_type='4' and source_id='"+str(self.basic_type)+"'")
+        self.tasklist = self.mssql.ExecQuery("SELECT task_id,source_id,task_name,table_name,start_time,freq_interval,freq_unit,task_status,contract_type FROM task_mgr WHERE task_type='4' and source_id='"+str(self.basic_type)+"'")
         self.zblist=self.mssql.ExecQuery("SELECT basic_value,bloomberg_code FROM [datacenter_new].[dbo].[T_BASICDATA] WHERE basic_type='"+str(self.basic_type)+"'")
         self.zbfieldlist=self.mssql.ExecQuery("SELECT zbfield FROM [Yaparams].[dbo].[task_wind_job_new] WHERE basic_type='"+str(self.basic_type)+"'")
         self.window=wx.Frame(win, title="查看任务 "+str(self.tasklist[0][0])+"",size=(810,785))
@@ -201,6 +206,8 @@ class looktask:
 
         self.okbtn=wx.Button(self.panel,label="采集历史数据")
         self.okbtn.Bind(wx.EVT_BUTTON,self.Caiji)
+        self.clearbtn=wx.Button(self.panel,label="清空对应数据表")
+        self.clearbtn.Bind(wx.EVT_BUTTON,self.Clear)
         self.savebtn=wx.Button(self.panel,label="保存并关闭")
         self.savebtn.Bind(wx.EVT_BUTTON,self.Save)
 
@@ -228,10 +235,20 @@ class looktask:
         self.taskstatuslist=['开启采集','关闭采集']
         self.taskstatuslisttoint={'开启采集':'0','关闭采集':'1'}
         self.taskstatusinttochar={'0':'开启采集','1':'关闭采集'}
-        print(self.tasklist[0][6])
         self.freunit_t=wx.ComboBox(self.panel, -1, self.inttochar[str(self.tasklist[0][6])], (15, 30), wx.DefaultSize,choices=sampleList)
         self.taskstatus=wx.StaticText(self.panel,label="任务状态")
         self.taskstatus_t=wx.ComboBox(self.panel, -1, self.taskstatusinttochar[str(self.tasklist[0][7])], (15, 30), wx.DefaultSize,choices=self.taskstatuslist)
+        self.isunittochar={'0':'否','1':'是','None':'否'}
+        self.isunittoint={'否':'0','是':'1'}
+        self.isunitlist=['是','否']
+        self.isunit=wx.StaticText(self.panel,label="是否按采集周期提取")
+        self.isunit_t=wx.ComboBox(self.panel, -1, self.isunittochar[str(self.tasklist[0][8])], (15, 30), wx.DefaultSize,choices=self.isunitlist)
+
+
+
+
+
+
         self.zbname=wx.StaticText(self.panel,label="指标名称")
         self.zbname_t=wx.TextCtrl(self.panel,style=wx.TE_MULTILINE|wx.HSCROLL|wx.TE_READONLY|wx.TE_READONLY)
         for zbname in (self.zblist):
@@ -269,7 +286,10 @@ class looktask:
         vbox1.Add(self.freunit_t,proportion=0 ,flag=wx.EXPAND|wx.ALL,border=0)
         vbox1.Add(self.taskstatus,proportion=0,flag=wx.EXPAND|wx.ALL,border=5 )
         vbox1.Add(self.taskstatus_t,proportion=0 ,flag=wx.EXPAND|wx.ALL,border=0)
+        vbox1.Add(self.isunit,proportion=0,flag=wx.EXPAND|wx.ALL,border=5 )
+        vbox1.Add(self.isunit_t,proportion=0 ,flag=wx.EXPAND|wx.ALL,border=0)
         vbox1.Add(self.okbtn,proportion=0 ,flag=wx.EXPAND|wx.TOP,border=5)
+        vbox1.Add(self.clearbtn,proportion=0 ,flag=wx.EXPAND|wx.TOP,border=5)
         vbox1.Add(self.savebtn,proportion=0 ,flag=wx.EXPAND|wx.TOP,border=5)
 
         vbox2.Add(self.zbid,proportion=0,flag=wx.EXPAND|wx.ALL,border=5)
@@ -300,7 +320,7 @@ class looktask:
 
         self.window.Show()
 
-        return None
+        return
     def Caiji(self,event):
 
 
@@ -310,9 +330,12 @@ class looktask:
         #self.dlg = wx.MessageDialog(self.window,'正在采集','通知',style= wx.CANCEL)
         caiji=wind_caiji.caiji([self.basic_type],self.logtext)
         caiji.start()
+    def Clear(self,event):
+        sql="delete FROM [datacenter_new].[dbo].["+self.tasklist[0][3]+"]"
+        self.mssql.ExecNonQuery(sql)
     def Save(self,event):
         zbstr=(wind_log.zb().zbread(self.tasklist[0][1]))
-        sql="UPDATE task_mgr SET task_name='"+self.taskname_t.GetValue()+"',freq_interval='"+str(self.freqinterval_t.GetValue())+"',freq_unit='"+self.sampleListtoint[str(self.freunit_t.GetValue())]+"',task_status='"+self.taskstatuslisttoint[str(self.taskstatus_t.GetValue())]+"' WHERE task_type='4' and source_id='"+str(self.basic_type)+"'"
+        sql="UPDATE task_mgr SET task_name='"+self.taskname_t.GetValue()+"',freq_interval='"+str(self.freqinterval_t.GetValue())+"',freq_unit='"+self.sampleListtoint[str(self.freunit_t.GetValue())]+"',task_status='"+self.taskstatuslisttoint[str(self.taskstatus_t.GetValue())]+"',contract_type='"+self.isunittoint[str(self.isunit_t.GetValue())]+"' WHERE task_type='4' and source_id='"+str(self.basic_type)+"'"
         print(sql)
         self.mssql.ExecNonQuery(sql)
         self.refresh(True)

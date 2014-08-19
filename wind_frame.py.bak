@@ -20,21 +20,21 @@ panel.SetBackgroundColour((255,255,255,255))
 grid=wx.grid.Grid(panel,style=wx.WANTS_CHARS,  name="tasklist")
 grid.DisableDragRowSize()
 v_box_sizer = wx.BoxSizer(wx.VERTICAL)
-#grid.EnableEditing(False)
+grid.EnableEditing(False)
 h_box_sizer = wx.BoxSizer(wx.HORIZONTAL)
-grid.CreateGrid(1,9,selmode=wx.grid.Grid.SelectRows)
+grid.CreateGrid(1,8,selmode=wx.grid.Grid.SelectRows)
 inttochar={'1':'日', '2':'周','3':'旬','4':'半月', '5':'月','6':'季度','7':'半年', '8':'年'}
-isunittochar={'0':'否','1':'是','None':'否'}
+
 taskstatusinttochar={'0':'开启采集','1':'关闭采集'}
-colLabels = ["任务id","T_BASIC序号" ,"任务名称","表名","任务开始时间","采集频率","采集周期","任务状态","是否按采集周期提取"]
-for row in range(9):
+colLabels = ["任务id","T_BASIC序号" ,"任务名称","表名","任务开始时间","采集频率","采集周期","任务状态"]
+for row in range(8):
     grid.SetColLabelValue(row,colLabels[row])
 
 class runtask:
     def __init__(self):
         self.isrun=True
     def start(self):
-        print "runtask start"
+        print "rundaytask"
         wind_log.date().datewrite(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')+"  开启自动采集\n",datetime.datetime.now().strftime('%Y-%m-%d'))
 
 
@@ -48,31 +48,32 @@ class runtask:
 
         if (self.isrun==True):
             print "hello world2"
-            refresh=wind_mssql.MSSQL(host="172.19.9.54",user="sa",pwd="Yafco2012",db="YaParams",charset="utf8")
             resList = refresh.ExecQuery("SELECT task_mgr.task_id,task_time FROM task_mgr,task_exec_list WHERE task_mgr.task_type='4' and task_mgr.task_id=task_exec_list.task_id ")
             #for tasktoday in resList:
                 #if tasktoday[1].strftime('%Y-%m-%d')==datetime.datetime.now().strftime('%Y-%m-%d'):
                     #refresh.ExecNonQuery("UPDATE task_mgr SET task_status='1' WHERE task_id='"+tasktoday[0]+"'")
+
+
+
+
             runday = threading.Timer(1, self.runday)
             runday.start()
 
     def runmin(self):
          if (self.isrun==True):
+            print "runmin   taskList:"
+            resList = refresh.ExecQuery("SELECT task_mgr.task_id,source_id FROM task_mgr,task_exec_list WHERE task_mgr.task_type='4' and task_exec_list.exec_status='0' and  task_mgr.task_id=task_exec_list.task_id")
+            taskrunList=[]
+            print(resList)
+            for taskrun in resList:
+                taskrunList.append(taskrun[1])
+                refresh.ExecNonQuery("UPDATE task_exec_list SET exec_status='1' WHERE task_id='"+str(taskrun[0])+"'")
+            caijitask=wind_caiji.caiji(taskrunList, logtext)
+            caijitask.start()
 
 
-            print str(datetime.datetime.now())+"runmin   taskList:"
-            refresh=wind_mssql.MSSQL(host="172.19.9.54",user="sa",pwd="Yafco2012",db="YaParams",charset="utf8")
-            try:
-                resList = refresh.ExecQuery("SELECT task_mgr.task_id,source_id FROM task_mgr,task_exec_list WHERE task_mgr.task_type='4' and task_exec_list.exec_status='0' and  task_mgr.task_id=task_exec_list.task_id")
-                taskrunList=[]
-                for taskrun in resList:
-                        taskrunList.append(taskrun[1])
-                        refresh.ExecNonQuery("UPDATE task_exec_list SET exec_status='1' WHERE task_id='"+str(taskrun[0])+"'")
-                if (len(taskrunList)!=0):
-                    caijitask=wind_caiji.caiji(taskrunList, logtext)
-                    caijitask.start()
-            except:
-                print("获取task_exec_list 失败")
+
+
             runmin = threading.Timer(60, self.runmin)
             runmin.start()
 task=runtask()
@@ -129,12 +130,12 @@ def Refresh(event):
     date.SetItems(dateList)
     date.SetValue(dateList[0])
     Openlog(True)
-    resList = refresh.ExecQuery("SELECT task_id,source_id,task_name,table_name,start_time,freq_interval,freq_unit,task_status,contract_type FROM task_mgr WHERE task_type='4'")
+    resList = refresh.ExecQuery("SELECT task_id,source_id,task_name,table_name,start_time,freq_interval,freq_unit,task_status FROM task_mgr WHERE task_type='4'")
     if len(resList)>grid.GetNumberRows():
         grid.AppendRows(numRows=len(resList)-grid.GetNumberRows())
     else:
         grid.DeleteRows(numRows=grid.GetNumberRows()-len(resList))
-    for (task_id,source_id,task_name,table_name,start_time,freq_interval,freq_unit,task_status,contract_type) in resList:
+    for (task_id,source_id,task_name,table_name,start_time,freq_interval,freq_unit,task_status) in resList:
         grid.SetCellValue(i, 0, str(task_id))
         grid.SetCellValue(i, 1, str(source_id))
         grid.SetCellValue(i, 2, str(task_name))
@@ -143,7 +144,6 @@ def Refresh(event):
         grid.SetCellValue(i, 5, str(freq_interval))
         grid.SetCellValue(i, 6, inttochar[str(freq_unit)])
         grid.SetCellValue(i, 7, taskstatusinttochar[str(task_status)])
-        grid.SetCellValue(i, 8, isunittochar[str(contract_type)])
         i+=1
     grid.AutoSizeColumns(setAsMin=True)
 
